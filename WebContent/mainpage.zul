@@ -1,0 +1,1602 @@
+<?page title="Members Register Form" contentType="text/html;charset=UTF-8"?>
+<zk>
+<window title="" border="normal" onCreate="fnchklogin()">
+<div align="right">
+<hbox onCreate="chkevent()">
+<button image="/img/find.png" label="ค้นหาลูกค้า" onClick="go2search()" />
+<button image="/img/logout.png" label="ออกจากระบบ" onClick="vlogout()" />
+</hbox>
+</div>
+<zscript>
+<![CDATA[
+         public void go2search(){
+        	 vsarcode="";
+        	 lblarcode.setValue("");
+        	 vestatus="";
+        	 lblstatus.setValue("");        	
+        	 application.setAttribute("vstatus", "");
+        	 Executions.sendRedirect("searchar.zul");
+         }
+         public void vlogout(){
+        	 vsarcode="";
+        	 lblarcode.setValue("");
+        	 vestatus="";
+        	 lblstatus.setValue("");
+        	 application.setAttribute("vstatus", "");
+        	 application.setAttribute("vuser", "");
+ 			 application.setAttribute("vpwd", "");
+        	 Executions.sendRedirect("index.zul");
+         }
+	]]>
+</zscript>
+<hbox>
+<label id="lbluser" value="${applicationScope['vuser']}" visible="false" />
+<label id="lblpwd" value="${applicationScope['vpwd']}" visible="false" />
+<label id="lblarcode" value="${applicationScope['sarcode']}" visible="false" />
+<label id="lblcardid" value="${applicationScope['cardnumber']}" visible="false" />
+<label id="lblstatus" value="${applicationScope['vstatus']}" visible="false" />
+<label id="lbladdmember" value="${applicationScope['vaddstatus']}" visible="false" />
+</hbox>
+<zscript>
+<![CDATA[
+         
+import java.sql.*;
+import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
+import org.zkoss.zk.ui.Executions;
+import org.zkoss.zul.Label;
+import org.zkoss.zk.ui.event.CreateEvent;
+import org.zkoss.zk.ui.event.Event;
+import org.zkoss.zk.ui.event.ForwardEvent;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Formatter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Calendar;
+import condb.Database;
+
+
+String bcuser;
+String bcpass;
+Integer fmi;
+String rsstrlog;
+
+SimpleDateFormat dformat= new SimpleDateFormat("dd/MM/yyyy");
+// public variable-------------
+String vsarcode;
+String vbusinesscode;
+String vjobcode;
+String vpjplancode;
+String vpjplantcode;
+String vgetbudget;
+String vestatus;
+String vaddsts;
+String vnewcode;
+String visss;
+Checkbox cbxfm;
+Checkbox cbxjob;
+Checkbox cbxact;
+//--------Get from application label
+
+vestatus=lblstatus.getValue();
+vsarcode = lblarcode.getValue();
+vnewcode=lblcardid.getValue();
+vaddsts=lbladdmember.getValue();
+
+Connection con=null;
+Statement st =null;
+
+public void fnchklogin(){
+	
+	if(bcuser=="" && bcpass ==""){
+		Executions.sendRedirect("index.zul");
+	}
+}
+public void connectdb(){
+	try{
+		bcuser=lbluser.getValue();
+		bcpass=lblpwd.getValue();
+		con = Database.getConnection(bcuser, bcpass);
+		st = con.createStatement();
+	}catch(SQLException ex){
+		ex.printStackTrace();
+	}
+}
+public void chkevent(){
+	String tt;
+	tt=txtarcode.getValue();
+	if(vaddsts=="n" && vestatus !="c"){
+		vsarcode="";
+		vnewcode="";		
+		txtarcode.setValue("");
+		txtarcode.setReadonly(true);
+		txtmemberid.setReadonly(true);
+		//loadmember();
+		jobdmc();
+		familydmc();
+		pjact();
+	}
+	if(vsarcode != vnewcode && vestatus=="c"){
+		vlockbox();
+	}
+	if(vaddsts=="n" && vestatus=="c"){
+		//loadmember();
+		occdmcnew();
+		jobdmc();
+		familydmc();
+		pjact();
+		vsarcode="";
+		txtarcode.setReadonly(true);
+		txtmemberid.setReadonly(true);
+		txtarcode.setValue(vnewcode);
+		txtmemberid.setValue(vnewcode);	
+		vunlockbox();
+		
+	}
+	if(vaddsts=="r" && vestatus=="c"){
+		
+		txtarcode.setReadonly(true);
+		txtmemberid.setReadonly(true);
+		loadmember();
+		jobdmc();
+		familydmc();
+		pjact();
+		txtarcode.setValue(vsarcode);		
+		txtmemberid.setValue(vnewcode);
+		
+		//jobdmc();
+	}
+	if(vaddsts=="r" && vestatus!="c"){
+		txtarcode.setReadonly(true);
+		txtmemberid.setReadonly(true);
+		loadmember();
+		jobdmc();
+		familydmc();
+		pjact();
+		vlockbox();
+	}
+	if(vsarcode!=""){
+		txtarcode.setReadonly(true);
+		txtmemberid.setReadonly(true);
+	}
+	System.out.println("arcode="+vsarcode);
+	System.out.println("vnewcard="+vnewcode);
+	System.out.println("Add status="+vaddsts);
+	System.out.println("Status="+vestatus);
+}
+public void vlockbox(){
+	txtadd.setReadonly(true);
+	txttambol.setReadonly(true);
+	txtamper.setReadonly(true);
+	txtprovince.setReadonly(true);
+	txtzipcode.setReadonly(true);
+}
+public void vunlockbox(){
+	txtadd.setReadonly(false);
+	txttambol.setReadonly(false);
+	txtamper.setReadonly(false);
+	txtprovince.setReadonly(false);
+	txtzipcode.setReadonly(false);
+}
+public void vdd(){
+	try{
+	final Window winitm = (Window) Executions.createComponents("searchcard.zul",null, null);    	  		
+		winitm.setMaximizable(true);
+		winitm.doModal(); 
+	}catch(Exception ex){
+		ex.printStackTrace();
+	}
+
+}
+public void loadmember(){
+	// ข้อมูลลูกค้า
+	String vremember;
+	String vartype;
+	
+	if (vsarcode !=""){	
+		try {
+			connectdb();        	
+			st.executeQuery("exec USP_MB_MemberView '"+vsarcode+"'");
+			ResultSet rsar = st.getResultSet (); 
+			while (rsar.next()){
+			txtarcode.setValue(rsar.getString("Arcode"));
+			txtmemberid.setValue(rsar.getString("Memberid"));
+			vremember=rsar.getString("Remember");
+			if(vremember == "0"){
+				newremember.setChecked(true);
+			
+			}else{
+				rmbr.setChecked(true);
+				}			  
+			regdate.setValue(rsar.getDate("begindate"));
+			vartype = rsar.getString("PersonType");
+			if(vartype=="0"){
+				rdot1.setChecked(true);
+				rdot2.setChecked(false);
+				artype0();
+				txtpf.setValue(rsar.getString("TitleName"));
+				txtarname.setValue(rsar.getString("ARName"));
+			}else{
+				rdot1.setChecked(false);
+				rdot2.setChecked(true);
+				artype1();
+				txtpf.setValue(rsar.getString("TitleName"));
+				txtarname.setValue(rsar.getString("ARName"));
+				txtcpf.setValue(rsar.getString("contactTitlename"));
+				txtcontactname.setValue(rsar.getString("ContactName"));
+				}				
+			txtidcardnum.setValue(rsar.getString("IDcardNo"));
+			bthdate.setValue(rsar.getDate("Birthday"));
+			txtadd.setValue(rsar.getString("Address1"));
+			txttambol.setValue(rsar.getString("Tambol"));
+			txtamper.setValue(rsar.getString("Amphur"));
+			txtprovince.setValue(rsar.getString("Province"));
+			txtzipcode.setValue(rsar.getString("ZipCode"));
+			txthtel.setValue(rsar.getString("HomeTelNumber"));
+			txthto.setValue(rsar.getString("HomeTelToNumber"));
+			txthex.setValue(rsar.getString("HomeTelExtension"));
+			txtwtel.setValue(rsar.getString("WorkTelNumber"));
+			txtwto.setValue(rsar.getString("WorkTelToNumber"));
+			txtwex.setValue(rsar.getString("WorkTelExtension"));
+			txtfax.setValue(rsar.getString("FaxNumber"));
+			txtmobile.setValue(rsar.getString("MobileTelNumber"));
+			txtemail.setValue(rsar.getString("email"));	
+			txtqta.setValue(rsar.getString("JobQuotation"));
+			txtproductrq.setValue(rsar.getString("ProductRequest"));
+			//อาชีพ  Business
+			vbusinesscode=rsar.getString("businesscode");
+			if(vbusinesscode!="" && vsarcode!="" && vbusinesscode !=null){
+				occdmc();
+			}else
+			{
+				occdmcnew();
+			}
+			// ProjectPlan
+			vpjplancode=rsar.getString("ProjectPlanCode");
+			if(vpjplancode=="001"){
+				rdopj1.setChecked(true);
+				if(vpjplancode=="002"){
+					rdopj2.setChecked(true);
+				}
+			}
+			//ProjectPlanTime
+			vpjplantcode=rsar.getString("ProjectPlanTCode");
+			if(vpjplantcode=="001"){
+				pjt1.setChecked(true);
+				if(vpjplantcode=="002"){
+					pjt2.setChecked(true);
+					if(vpjplantcode=="003"){
+						pjt3.setChecked(true);
+						if(vpjplantcode=="004"){
+							pjt4.setChecked(true);
+						}
+					}
+				}
+			}
+			// Budget
+			vgetbudget=rsar.getString("BudgetCode");
+			if(vgetbudget=="001"){
+				bgd1.setChecked(true);
+				if(vgetbudget=="002"){
+					bgd2.setChecked(true);
+					if(vgetbudget=="003"){
+						bgd3.setChecked(true);
+						if(vgetbudget=="004"){
+							bgd4.setChecked(true);
+						}
+					}
+				}
+			}
+			}//end while		
+		
+		}catch(SQLException ex){
+			ex.printStackTrace();
+		}
+	}
+}
+	]]>
+</zscript>
+<div align="center">
+<portallayout id="frmform" width="800px">
+<portalchildren>
+<panel>
+ <panelchildren>
+ <div align="left">
+ <grid width="100%">	
+ 	<columns>
+ 	<column width="30%" />
+ 	<column width="70%" />
+ 	</columns>
+		<rows>
+			<row>
+			<label value="รหัสลูกค้า : " style="font-size:11px;"/><textbox id="txtarcode"/>
+			</row>
+			<row>
+			<label value="รหัสสมาชิก : " style="font-size:11px;"/><hbox><textbox id="txtmemberid"/><button label="ค้นหาบัตร" image="/img/spotlight1.png" onClick="vdd()" /></hbox>
+			</row>
+			<row>
+			<label value="ประเภทการสมัคร: " style="font-size:11px;"/>
+			<hbox>
+			<groupbox id="gbxrmtype">
+			<radiogroup onChecked="lblremember.value = self.selectedItem.value">
+			<radio label="สมัครบัตรใหม่" id="newremember" value="0"/>
+			<radio label="แทนบัตรเดิม(กรณีสูญหาย ชำรุดหรือเปลี่ยนบัตร)" id="rmbr" value="1"/>
+			</radiogroup>
+			<label id="lblremember" visible="false" />
+			</groupbox>
+			</hbox>
+			</row>
+			<row>
+			<label value="วันที่สมัคร : " style="font-size:11px;"/><datebox id="regdate" format="dd/MM/yyyy"/>
+			</row>
+			<row>
+			<label value="ประเภทลูกค้า : " style="font-size:11px;"/>
+			<hbox>
+			<groupbox onChecked="lblpersontype.value = self.selectedItem.value">
+			<radiogroup>
+			<radio label="บุคคลธรรมดา :" id="rdot1" onCheck="artype0()" value="0"/>
+			<radio label="นิติบุคคล" id="rdot2" onCheck="artype1()" value="1"/>
+			</radiogroup>
+			<label id="lblpersontype" visible="false" />
+			</groupbox>
+			</hbox>
+			</row>
+			<row>
+			<label value="ชื่อลูกค้า :" />
+			<hbox>
+			<vbox>
+			<vbox visible="true">
+			<hbox>
+			<label value="คำนำหน้า" /><textbox id="txtpf" width="40px" constraint="" /><label value="ชื่อ-สกุล" /><textbox id="txtarname" width="300px" constraint="" />
+			</hbox>
+			</vbox>
+			<vbox id="vbxcompany" visible="false">			
+			<hbox><label value="ติดต่อ"/><textbox id="txtcpf" width="40px"/> <textbox id="txtcontactname" width="280px"/> </hbox>
+			</vbox>
+			</vbox>
+			</hbox>
+			</row>
+			<row>
+			<label value="เลขที่บัตรประจำตัวประชาชน/เลขบัตรผู้เสียภาษี : " /><textbox id="txtidcardnum" maxlength="17" constraint="" />
+			</row>
+			<row>
+			<label value="วันเดือนปีเกิด :" /> <datebox id="bthdate" format="dd/MM/yyyy"/>
+			</row>
+			<row>
+			<label value="ที่อยูปัจจุบัน(ใช้ออกใบกำกำภาษี) เลขที่ :"/><textbox id="txtadd" constraint="" />
+			</row>
+			<row> 
+			<label value="แขวง/ตำบล" /><textbox id="txttambol" constraint="" />
+			</row>
+			<row>
+			<label value="เขต/อำเภอ" /><textbox id="txtamper" constraint="" />
+			</row>
+			<row>
+			<label value="จังหวัด" /><textbox id="txtprovince" constraint="" />
+			</row>
+			<row>
+			<label value="รหัสไปรษรีย์ :" /><textbox id="txtzipcode"  maxlength="5" constraint="" />
+			</row>
+			<row>
+			<label value="โทรศัพท์บ้าน :" /><hbox><textbox id="txthtel" constraint="" /><label value="-"/><textbox id="txthto" width="25px" constraint=""/><label value="ต่อ" /><textbox id="txthex" width="50px" constraint="" /></hbox>
+			</row>
+			<row>
+			<label value="โทรศัพท์ที่ทำงาน :" /><hbox><textbox id="txtwtel" constraint="" /><label value="-"/><textbox id="txtwto" width="25px" constraint=""/><label value="ต่อ" /><textbox id="txtwex" width="50px" constraint="" /></hbox>
+			</row>
+			<row>
+			<label value="แฟ็กซ์:" /><textbox id="txtfax" constraint="" />
+			</row>
+			<row>
+			<label value="มือถือ :" /><textbox id="txtmobile" constraint="" />
+			</row>
+			<row>
+			<label value="อีเมล์ :" /><textbox id="txtemail" constraint="" />
+			</row>
+			<row>
+			<label value="อาชีพ" /><hbox>
+			<zscript>
+			<![CDATA[
+
+  
+public void occdmcnew(){
+	Radiogroup rdog;
+	Radio rdoc;
+	String vbizcode;
+	
+  try {					
+	  	connectdb();        
+		st.executeQuery("exec USP_MB_BusinessMaster ");
+		ResultSet rs = st.getResultSet (); 					   				
+		rdog= new Radiogroup();	
+		while (rs.next()){
+			rdoc = new Radio();
+			rdoc.setValue(rs.getString("Businesscode"));
+			rdoc.setLabel(rs.getString("Business"));						
+			rgoc.appendChild(rdoc);			
+			}	    
+									
+  		}catch(SQLException ex){
+  			ex.printStackTrace();
+  		}
+			} 
+
+public void occdmc(){
+				Radiogroup rdog;
+				Radio rdoc;
+				String vbizcode;				
+			  try {		
+				  	connectdb();		  
+					st.executeQuery("exec USP_MB_BusinessMaster");
+					ResultSet rs = st.getResultSet (); 					   				
+					rdog= new Radiogroup();	
+					while (rs.next()){										
+							rdoc = new Radio();
+							vbizcode=rs.getString("Businesscode");
+							if(vbusinesscode.equals(vbizcode)){
+								rdoc.setValue(vbizcode);								
+								rdoc.setLabel(rs.getString("Business"));	
+								rdoc.setChecked(true);								
+							}else
+							{
+								rdoc.setValue(vbizcode);
+								rdoc.setChecked(false);
+								rdoc.setLabel(rs.getString("Business"));									
+							}												
+							rgoc.appendChild(rdoc);				
+						}	
+			  	}catch(SQLException ex){
+			  		ex.printStackTrace();
+			  	}
+			}  
+public void jobdmcnew(){
+	Checkbox cbxjob;
+	Vbox nvbx;
+	Integer x;
+	
+  try {					
+	  	connectdb();
+		st.executeQuery("exec USP_MB_JobserviceMaster ");
+		ResultSet rs = st.getResultSet (); 					   				
+		
+		while (rs.next()){
+			cbxjob = new Checkbox();
+			cbxjob.setId(rs.getString("Jobservicecode"));
+			cbxjob.setLabel(rs.getString("JobServiceName"));	
+			gbxjob.appendChild(cbxjob);
+		}  				
+  	}catch(SQLException ex){
+  		ex.printStackTrace();
+  	}
+}
+public void jobdmc(){
+				
+				Vbox nvbx;
+				String vsvcodeM;
+				String vsvcodeV;			
+				
+			  try {					
+				  	connectdb();				 
+					st.executeQuery("exec USP_MB_JobserviceMaster");
+					ResultSet rs = st.getResultSet(); 
+					while (rs.next()){						
+						cbxjob = new Checkbox();
+						vsvcodeM=rs.getString("Jobservicecode");
+						cbxjob.setId(vsvcodeM+"s");
+						cbxjob.setName(vsvcodeM);
+						cbxjob.setLabel(rs.getString("JobServiceName"));     
+						
+				        Statement jst = con.createStatement();
+						jst.executeQuery("exec USP_MB_JobserviceView '"+vsarcode+"'");
+						ResultSet rs1 = jst.getResultSet(); 
+						while(rs1.next()){
+							vsvcodeV=rs1.getString("JobserviceCodevw");
+							if(vsvcodeM.equals(vsvcodeV)){
+							  cbxjob.setChecked(true);	
+							}
+						}													
+						gbxjob.appendChild(cbxjob);		
+			  		}
+			  }catch(SQLException ex){
+				  ex.printStackTrace();
+			  }
+			} 
+	 public void familydmc(){
+			
+			String vbyfm;
+			String vbyfv;
+		  try {					
+			  	connectdb();
+				st.executeQuery("exec USP_MB_BuyFamilyMaster ");
+				ResultSet rs = st.getResultSet (); 					   				
+				
+				while (rs.next()){
+					cbxfm = new Checkbox();
+					vbyfm =rs.getString("Familycode");
+					cbxfm.setId(vbyfm+"f");
+					cbxfm.setName(vbyfm);
+					cbxfm.setLabel(rs.getString("Familyname"));		
+					Statement fst = con.createStatement();
+					fst.executeQuery("exec USP_MB_BuyFamilyView '"+vsarcode+"' ");
+					ResultSet rsfv = fst.getResultSet (); 	
+					while(rsfv.next()){
+						vbyfv=rsfv.getString("Familycode");
+						if(vbyfm.equals(vbyfv)){
+							cbxfm.setChecked(true);
+						}
+					}
+					gbxfamily.appendChild(cbxfm);
+				}					    					
+		  	}catch(SQLException ex){
+		  		ex.printStackTrace();
+		  	}
+		} 	
+	 public void pjact(){			
+		    	
+		    String vpactm;
+		    String vpactv;
+		  try {	
+			  	connectdb();
+				st.executeQuery("exec USP_MB_ProjectActMaster");
+				ResultSet prs = st.getResultSet (); 					   				
+				
+				while (prs.next()){
+					cbxact = new Checkbox();
+					vpactm=prs.getString("ProjectActCode");
+					cbxact.setId(vpactm+"ac");
+					cbxact.setName(vpactm);
+					cbxact.setLabel(prs.getString("ProjectAct"));
+					Statement vst = con.createStatement();
+					vst.executeQuery("exec USP_MB_MemberViewAct '"+vsarcode+"'");
+					ResultSet prs1 = vst.getResultSet (); 	
+					while(prs1.next()){
+						vpactv=prs1.getString("ProjectActCode");
+						if(vpactm.equals(vpactv)){
+							cbxact.setChecked(true);
+						}
+					}
+					gbxact.appendChild(cbxact);
+				}			    				
+		  	}catch (SQLException e) {}		  
+		}
+	 public void artype0(){
+			vbxcompany.setVisible(false);
+		} 
+		public void artype1(){
+			vbxcompany.setVisible(true);
+		} 
+			  
+	]]>
+			</zscript>
+			<radiogroup id="rgoc" onCheck="lblbiz.value = self.selectedItem.value"></radiogroup>
+			<label id="lblbiz" visible="false"/>			
+			</hbox>
+			</row>
+			<row>
+			<label value="งานที่ท่านให้บริการ:"/><groupbox id="gbxjob" ><caption label="ตอบได้มากกว่า 1 ข้อ" /></groupbox>
+			</row>
+			<row>
+			<label value="กรณีผู้รับเหมาและช่าง งานใดบ้านที่ท่านเสนอราคาต่อลูกค้าได้" /><textbox id="txtqta" width="400px"/>
+			</row>
+			<row>
+			<label value="โดยปกติท่านซื้อสินค้าแผนกใดเป็นประจำ :" /><groupbox id="gbxfamily"><caption label="ตอบได้มากกว่า 1 ข้อ" /></groupbox>
+			</row>
+			<row>
+			<label value="ท่านมีแผนที่จะ" />
+			<hbox>
+			<radiogroup onCheck="lblpj.value = self.selectedItem.value">
+			<radio id="rdopj1" value="001" label="ก่อสร้าง" />
+			<radio id="rdopj2" value="002" label="ต่อเติม" />
+			</radiogroup>
+			<label id="lblpj" visible="false" />
+			<label value="อื่นๆ ระบุ" /><textbox id="pjother"></textbox>
+			</hbox>
+			</row>
+			<row>
+			<label value="ภายในระยะเวลา" />
+			<hbox>
+			<radiogroup onCheck="lblpjt.value = self.selectedItem.value">
+			<radio id="pjt1" value="001" label="กำลังดำเนินการ" />
+			<radio id="pjt2" value="002" label="ภายใน 6 เดือน" /> 
+			<radio id="pjt3" value="003" label="6-12 เดือน " />
+			<radio id="pjt4" value="004" label="มากกว่า 12 เดือน" />
+			</radiogroup>
+			<label id="lblpjt" visible="false" />
+			</hbox>
+			</row>
+			<row>
+			<label value="บทบาทในโครงการ" /><groupbox id="gbxact"><caption label="ตอบได้มากกว่า 1 ข้อ" /></groupbox>		
+			</row>
+			<row>
+			<label value="งบประมาณ" />
+			<hbox>
+			<radiogroup onCheck="lblbudget.value = self.selectedItem.value">
+			<radio id="bgd1" value="001" label="ไม่เกิน 500,000 บาท"/>
+			<radio id="bgd2" value="002" label="500,000-1,000,000 บาท"/>
+			<radio id="bgd3" value="003" label="1,000,000-3,000,000 บาท" />
+			<radio id="bgd4" value="004" label="3,000,000-10,000,000 บาท" />
+			<radio id="bgd5" value="005" label="10,000,000 บาทขึ้นไป" />
+			</radiogroup>
+			<label id="lblbudget" visible="false"/>
+			</hbox>
+			</row>
+			<row>
+			<label value="สินค้าที่อยากให้นำมาจำหน่าย" /><textbox id="txtproductrq" />
+			</row>
+			<row><label />
+			<button label="บันทึกข้อมูล" image="/img/save.png" width="200px" onClick="savememberdata()" />
+			</row>			
+		</rows>
+	</grid>
+ </div>
+</panelchildren>
+</panel>
+</portalchildren>
+</portallayout>
+</div>
+<zscript>
+<![CDATA[
+String svarcode;
+String svmembercode;
+String svremembertype;
+String svregisterdate;
+String svpersontype;
+String svarprefix;
+String svarname;
+String svcontactprefix;
+String svcontactname;
+String svidcardnum;
+String svbirthdate;
+String svtaxadd;
+String svtambol;
+String svamper;
+String svprovince;
+String svzipcode;
+String svhometel;
+String svhometel2;
+String svhometelext;
+String svworktel;
+String svworktel2;
+String svworktelext;
+String svfax;
+String svmobile;
+String svemail;
+String svbizcode;
+String svbizother;
+String svjobservicecode;
+String svquotation;
+String svfamilycode;
+String svplancode;
+String svplanother;
+String svplantimecode;
+String svactcode;
+String svbudgetcode;
+String svproduct;
+String svteltype;
+String svtelnumber;
+String svtelto;
+String svtelext;
+String vssdes;
+Integer vsint;
+String bchphone;
+String bcwphone;
+String bcmobile;
+String allbcphone;
+String bcfax;
+
+public void savemember(){	
+	 Date rdate;
+	 Date bdate;
+	 ResultSet rssv =null;
+	 List datalist;
+	  //-------------
+	  svarcode=txtarcode.getValue();
+	  svmembercode=txtmemberid.getValue();
+	  svremembertype=lblremember.getValue();
+	  svpersontype=lblpersontype.getValue();
+	  //svregisterdate=regdate.getValue();
+	  // rdate=regdate.getValue();
+	  //svregisterdate=
+	  String vrgdate= regdate.getText();
+	  
+ 		
+ 	  svregisterdate=dtnormal(vrgdate);
+	  //enddate
+	  svarprefix=txtpf.getValue();
+	  svarname=txtarname.getValue();
+	  svidcardnum=txtidcardnum.getValue();
+	  //svbirthdate=bthdate.getValue();
+	  
+	  //svbirthdate
+	  String vbirthday;
+	  	vbirthday=bthdate.getText();	 
+	  svbirthdate=dtnormal(vbirthday);
+	  svtaxadd=txtadd.getValue();
+	  String gtambol;
+	  String xtambol;
+	  gtambol=txttambol.getValue();
+	  if(gtambol!=""){
+	  xtambol=gtambol.substring(0,2);
+	  if(xtambol.equals("ต.")){
+		  svtambol=gtambol;  
+	  }else{
+		  svtambol="ต.".concat(gtambol);
+	  } }else{ svtambol=""; }
+	  String gamper;
+	  String xamper;
+	  gamper=txtamper.getValue();
+	  if(gamper!=""){
+	  xamper=gamper.substring(0,2);
+	   if(xamper.equals("อ.")){
+		  svamper=gamper; 
+	    }else{
+		  svamper="อ.".concat(gamper);
+	   }
+	  }else {svamper=""; }
+	  String gprovince;
+	  String xprovince;
+	  gprovince=txtprovince.getValue();
+	  if(gprovince!=""){
+	  xprovince=gprovince.substring(0,2);
+	  if(xprovince.equals("จ.")){
+		  svprovince=gprovince;
+	  }else{
+		  svprovince="จ.".concat(gprovince);
+	  }
+	  }else { svprovince=""; }
+	  svzipcode=txtzipcode.getValue();  	
+	  /*
+	  bchphone=txthtel.getValue();
+	  bcwphone=txtwtel.getValue();
+	  bcmobile=txtmobile.getValue();
+	  bcfax=txtfax.getValue();
+	  if(bchphone !="" && bcwphone !="" && bcmobile!=""){
+		  allbcphone=bchphone.concat(", ").concat(bcwphone).concat(", ").concat(bcmobile);
+	  }else if(bchphone =="" && bcwphone !="" && bcmobile!=""){
+		  allbcphone=bcwphone.concat(", ").concat(bcmobile);
+	  }else if(bchphone !="" && bcwphone =="" && bcmobile!=""){
+		  allbcphone=bchphone.concat(", ").concat(bcmobile);
+	  }else if(bchphone !="" && bcwphone !="" && bcmobile==""){
+		  allbcphone=bchphone.concat(",").concat(bcwphone);
+	  }else if(bchphone !="" && bcwphone =="" && bcmobile==""){
+		  allbcphone=bchphone;
+	  }else if(bchphone =="" && bcwphone !="" && bcmobile==""){
+		  allbcphone=bcwphone;
+	  }else if(bchphone =="" && bcwphone =="" && bcmobile !=""){
+		  allbcphone=bcmobile;
+	  }	  
+	  System.out.println(allbcphone);
+	  */
+	  //-------------	
+	  //Messagebox.show("Are you usre to replace?", "information window", Messagebox.OK|Messagebox.CANCEL,Messagebox.QUESTION); 
+	  try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave '"+svidcardnum+"','"+svarcode+"','"+svmembercode+"','"+svremembertype+"'"+
+		" ,'"+svregisterdate+"','"+svpersontype+"','"+svarprefix+"','"+svarname+"','"+svbirthdate+"','"+svtaxadd+"'"+
+		" ,'"+svtambol+"','"+svamper+"','"+svprovince+"','"+svzipcode+"'";
+		CallableStatement cs = con.prepareCall(strQry);			
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {
+	                // Process the error
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());
+	                // When execute() throws an exception, it may just be that the first statement produced an error.
+	                // Statements after the first one may have succeeded.  Continue processing results until there
+	                // are no more.
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                // Process the error
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());
+	                // When getMoreResults() throws an exception, it may just be that the current statement produced an error.
+
+	                // Statements after that one may have succeeded.  Continue processing results until there
+
+	                // are no more.
+
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            // Process the ResultSet
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);
+	            rs.next();
+	            visss=rs.getString(1);
+	            System.out.println("ค่าที่รับมา ="+visss);
+	            rsstrlog=rs.getString(2);
+	            System.out.println("ค่าที่รับมา Log ="+rsstrlog);
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	            // No more results
+	            if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }
+	            // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e)
+	    {}	
+}
+public String dtnormal(String vgetdate){	
+	
+	String vrsDate;
+	String vYear;
+	String vDateMonth;
+	String strResultYear;
+	String strgetDate;
+	
+	strgetDate = vgetdate;
+	vYear = strgetDate.substring(6);
+	vDateMonth = strgetDate.substring(0,6);			
+	Integer xInt1 = Integer.parseInt(vYear);
+	System.out.println("xY="+xInt1);
+   		if (xInt1 > 2500){
+   			Integer bInt= xInt1-543;
+   			strResultYear= Integer.toString(bInt);
+   		}else {
+   			strResultYear= Integer.toString(xInt1);
+   		}
+			vrsDate=vDateMonth.concat(strResultYear); 	 			
+	System.out.println("return ="+vrsDate);
+
+return (vrsDate); 
+}
+
+public void savememberextension(){	
+	  svcontactprefix=txtcpf.getValue();
+	  svcontactname=txtcontactname.getValue();
+	  svemail=txtemail.getValue();
+	  svbizcode=lblbiz.getValue();
+	  svplancode=lblpj.getValue();
+	  svplanother=pjother.getValue();
+	  svplantimecode=lblpjt.getValue();
+	  svbudgetcode=lblbudget.getValue();
+	  svproduct=txtproductrq.getValue();
+	  try{
+		  	connectdb();
+			String strQry="exec USP_MB_MemberSave_Extension '"+svarcode+"','1','"+svcontactprefix+"','"+svcontactname+"'"+
+			" ,0,'"+svemail+"','"+svbizcode+"','"+svbizother+"','"+svplancode+"','"+svplanother+"'"+
+			" ,'"+svplantimecode+"','"+svbudgetcode+"','"+svproduct+"','"+svquotation+"'";
+			CallableStatement cs = con.prepareCall(strQry);	
+			
+			int resultNum = 0;
+		    while (true)
+		    {
+		        boolean queryResult;
+		        int rowsAffected;
+		        if (1 == ++resultNum)
+		        {
+		            try
+		            {
+		                queryResult = cs.execute();
+		            }
+		            catch (SQLException e)
+		            {		                
+		                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());		                
+		                continue;
+		            }
+		        }
+		        else
+		        {  try
+		            {
+		                queryResult = cs.getMoreResults();
+		            }
+		            catch (SQLException e){
+		                // Process the error
+		                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());		                
+		                continue;
+		            }
+		        }
+		        if (queryResult)
+		        {
+		            ResultSet rs = cs.getResultSet();
+		            // Process the ResultSet
+		            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);
+		            rs.next();
+		            visss=rs.getString(1);
+		            System.out.println("ค่าที่รับมา ="+visss);
+		            rsstrlog=rs.getString(2);
+		            System.out.println("ค่าที่รับมา Log ="+rsstrlog);		           
+		           
+		        }
+		        else
+		        {
+		            rowsAffected = cs.getUpdateCount();
+		            // No more results
+		            if (-1 == rowsAffected)
+		            { 
+		                break;
+		            }		            
+		            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+		            }
+		    }
+		    System.out.println("Done processing " + resultNum + " results");
+		    
+			} catch (SQLException e)
+		    {}	  
+}
+public void savemembertitlename(){	
+	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_TitleName '"+svarcode+"','"+svarprefix+"','"+svarname+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);	
+	            rs.next();
+	            visss=rs.getString(1);
+	            System.out.println("ค่าที่รับมา ="+visss);
+	            rsstrlog=rs.getString(2);
+	            System.out.println("ค่าที่รับมา Log ="+rsstrlog);
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e)    {}		
+}
+public void savememberaddress(){
+	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_Address '"+svarcode+"','"+svtaxadd+"','"+svtambol+"','"+svamper+"','"+svprovince+"','"+svzipcode+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);	
+	            rs.next();
+	            visss=rs.getString(1);
+	            System.out.println("ค่าที่รับมา ="+visss);
+	            rsstrlog=rs.getString(2);
+	            System.out.println("ค่าที่รับมา Log ="+rsstrlog);
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e)    {}		
+	
+}
+public void savemembertelephone(){	
+	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_Tel '"+svarcode+"','"+svteltype+"','"+svtelnumber+"','"+svtelto+"','"+svtelext+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);		            
+	            rs.next();
+	            visss=rs.getString(1);
+	            System.out.println("ค่าที่รับมา ="+visss);
+	            rsstrlog=rs.getString(2);
+	            System.out.println("ค่าที่รับมา Log ="+rsstrlog);
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e){}		
+	
+}
+public void savemembercard(){	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_MemberCard '"+svmembercode+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);		            
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e){}	
+}
+
+public void savememberservice(){	
+	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_Service '"+svarcode+"','"+svjobservicecode+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);		            
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e){}		
+}
+public void vischkjob(){
+	String a1;
+	a1=cbxjob.getName();
+	System.out.println("A1-Value=" + a1);
+	if(cbxjob.getName().equals("001") && cbxjob.isChecked()==true){
+		svjobservicecode="001";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("002") && cbxjob.isChecked()==true){
+		svjobservicecode="002";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("003") && cbxjob.isChecked()==true){
+		svjobservicecode="003";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("004") && cbxjob.isChecked()==true){
+		svjobservicecode="004";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("005") && cbxjob.isChecked()==true){
+		svjobservicecode="005";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("006") && cbxjob.isChecked()==true){
+		svjobservicecode="006";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("007") && cbxjob.isChecked()==true){
+		svjobservicecode="007";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("008") && cbxjob.isChecked()==true){
+		svjobservicecode="008";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("009") && cbxjob.isChecked()==true){
+		svjobservicecode="009";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("010") && cbxjob.isChecked()==true){
+		svjobservicecode="010";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("011") && cbxjob.isChecked()==true){
+		svjobservicecode="011";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("012")&& cbxjob.isChecked()==true){
+		svjobservicecode="012";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("013") && cbxjob.isChecked()==true){
+		svjobservicecode="013";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("014") && cbxjob.isChecked()==true){
+		svjobservicecode="014";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("015") && cbxjob.isChecked()==true){
+		svjobservicecode="015";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("016") && cbxjob.isChecked()==true){
+		svjobservicecode="016";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("017") && cbxjob.isChecked()==true){
+		svjobservicecode="017";
+		savememberservice();		
+	}
+	if(cbxjob.getName().equals("018") && cbxjob.isChecked()==true){
+		svjobservicecode="018";
+		savememberservice();		
+	}
+}
+public void vischkfamily(){
+	if(cbxfm.getName().equals("00010") && cbxfm.isChecked()==true){
+		svfamilycode="00010";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("00013") && cbxfm.isChecked()==true){
+		svfamilycode="00013";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("00015") && cbxfm.isChecked()==true){
+		svfamilycode="00015";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("00016") && cbxfm.isChecked()==true){
+		svfamilycode="00016";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("10000") && cbxfm.isChecked()==true){
+		svfamilycode="10000";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("00014") && cbxfm.isChecked()==true){
+		svfamilycode="00014";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("00006") && cbxfm.isChecked()==true){
+		svfamilycode="00006";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("00009") && cbxfm.isChecked()==true){
+		svfamilycode="00009";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("0001") && cbxfm.isChecked()==true){
+		svfamilycode="00011";  
+		savememberbuyfamily();
+	}
+	if(cbxfm.getName().equals("30000") && cbxfm.isChecked()==true){
+		svfamilycode="30000";  
+		savememberbuyfamily();
+	}
+}
+public void vischkpjact(){
+	if(cbxact.getName().equals("001") && cbxact.isChecked()==true){
+		svactcode="001";
+		savememberplanact();		
+	}
+	if(cbxact.getName().equals("002") && cbxact.isChecked()==true){
+		svactcode="002";
+		savememberplanact();		
+	}
+	if(cbxact.getName().equals("003") && cbxact.isChecked()==true){
+		svactcode="003";
+		savememberplanact();		
+	}
+	if(cbxact.getName().equals("004") && cbxact.isChecked()==true){
+		svactcode="004";
+		savememberplanact();		
+	}
+}
+public void savememberbuyfamily(){	
+	// Checkbox cbxfm;
+	// Checkbox cbxjob;
+	
+	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_Family '"+svarcode+"','"+svfamilycode+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);		            
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e){}	
+}
+public void savememberplanact(){	
+	
+	try{
+		connectdb();
+		String strQry="exec USP_MB_MemberSave_Planact '"+svarcode+"','"+svactcode+"'";
+		CallableStatement cs = con.prepareCall(strQry);	
+		
+		int resultNum = 0;
+	    while (true)
+	    {
+	        boolean queryResult;
+	        int rowsAffected;
+	        if (1 == ++resultNum)
+	        {
+	            try
+	            {
+	                queryResult = cs.execute();
+	            }
+	            catch (SQLException e)
+	            {	                
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        else
+	        {  try
+	            {
+	                queryResult = cs.getMoreResults();
+	            }
+	            catch (SQLException e){
+	                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());	                
+	                continue;
+	            }
+	        }
+	        if (queryResult)
+	        {
+	            ResultSet rs = cs.getResultSet();
+	            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);		            
+	            
+	        }
+	        else
+	        {
+	            rowsAffected = cs.getUpdateCount();
+	             if (-1 == rowsAffected)
+	            {  //--resultNum;
+	                break;
+	            }   // Process the update count
+	            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+	            }
+	    }
+	    System.out.println("Done processing " + resultNum + " results");
+	    
+		} catch (SQLException e){}	
+}
+
+public void tsave(){
+	try{
+	vbegintran();
+	savemember();
+	System.out.println("tsave test="+visss);
+	if(visss.equals("1")){
+		//Connection conn1 = DriverManager.getConnection(url1, bcuser, bcpass);
+		//Statement sm1 = conn.createStatement();
+		//sm1.executeQuery("commit tran");
+		commitmember();
+		 //Messagebox.show("Are you usre to replace?", "information window", Messagebox.OK|Messagebox.CANCEL,Messagebox.QUESTION);
+		Messagebox.show("บันทึกข้อมูลเรียบร้อยแล้ว", "information window", Messagebox.OK,Messagebox.INFORMATION);
+	}else
+	{
+		Messagebox.show("ไม่สามารถบันทึกข้อมูลได้", "information window", Messagebox.OK,Messagebox.ERROR);
+		rollbackmember();
+	}
+	}catch(Exception ex){
+		ex.printStackTrace();
+	}
+}
+
+
+public void savememberdata(){	
+try{
+	vbegintran();
+	savemember();
+	if(visss.equals("1")){
+		savememberextension();
+		if(visss.equals("1")){
+			savemembertitlename();
+			if(visss.equals("1")){
+				savememberaddress();
+				if(visss.equals("1")){
+					savemembercard();
+					if(visss.equals("1")){
+						if(txthtel.getValue()!=""){
+							svtelnumber=txthtel.getValue();
+							svtelto=txthto.getValue();
+							svtelext=txthex.getValue();
+							svteltype="0";
+							savemembertelephone();
+						}
+						if(txtwtel.getValue()!=""){
+							svtelnumber=txtwtel.getValue();
+							svtelto=txtwto.getValue();
+							svtelext=txtwex.getValue();
+							svteltype="3";
+							savemembertelephone();
+						}
+						if(txtmobile.getValue()!=""){
+							svtelnumber=txtmobile.getValue();
+							svtelto="";
+							svtelext="";
+							svteltype="2";
+							savemembertelephone();
+						}
+						if(txtmobile.getValue()!=""){
+							svtelnumber=txtfax.getValue();
+							svtelto="";
+							svtelext="";
+							svteltype="1";
+							savemembertelephone();
+							
+						}// --end save telephone
+						// committ 
+							if(visss.equals("1")){
+							vischkjob();
+							vischkfamily();
+							vischkpjact();	
+							}
+						commitmember();
+						 //Messagebox.show("Are you usre to replace?", "information window", Messagebox.OK|Messagebox.CANCEL,Messagebox.QUESTION);
+						Messagebox.show("บันทึกข้อมูลเรียบร้อยแล้ว", "information window", Messagebox.OK,Messagebox.INFORMATION);
+						Executions.sendRedirect("searchar.zul");
+					}else
+					{
+						Messagebox.show("ไม่สามารถบันทึกข้อมูลได้ :"+rsstrlog+"", "Error window", Messagebox.OK,Messagebox.ERROR);
+						rollbackmember();
+					}
+				}else{
+					Messagebox.show("ไม่สามารถบันทึกข้อมูลได้ :"+rsstrlog+"", "Error window", Messagebox.OK,Messagebox.ERROR);
+					rollbackmember();
+				}
+			}else{
+				Messagebox.show("ไม่สามารถบันทึกข้อมูลได้ :"+rsstrlog+"", "Error window", Messagebox.OK,Messagebox.ERROR);
+				rollbackmember();
+			}
+		}else{
+			Messagebox.show("ไม่สามารถบันทึกข้อมูลได้ :"+rsstrlog+"", "Error window", Messagebox.OK,Messagebox.ERROR);
+			rollbackmember();
+		}
+	}else{
+		Messagebox.show("ไม่สามารถบันทึกข้อมูลได้ :"+rsstrlog+"", "Error window", Messagebox.OK,Messagebox.ERROR);
+		rollbackmember();
+	}	
+	//savememberservice();
+	//savememberbuyfamily();
+}catch(Exception ex){
+	ex.printStackTrace();
+}
+}
+public void vbegintran(){
+	try{
+	connectdb();	
+	st.execute("begin tran");
+	}catch(SQLException e){}
+}
+public void commitmember(){
+	try{
+	connectdb();
+	st.execute("commit tran");	
+	}catch(SQLException e){}
+}
+public void rollbackmember(){
+	try{
+	connectdb();
+	st.execute("rollback tran");
+	}catch(SQLException e){}
+}
+	]]>
+</zscript>
+</window>
+</zk>

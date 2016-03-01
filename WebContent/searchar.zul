@@ -1,0 +1,158 @@
+<?page title="ค้นหาลูกค้า" contentType="text/html;charset=UTF-8"?>
+<zk>
+<window title="ค้นหาลูกค้า" border="normal" width="800px" onCreate="fnchklogin()">
+<div align="right">
+<hbox >
+<button image="/img/find.png" label="ค้นหาลูกค้า" onClick="go2search()" />
+<button image="/img/logout.png" label="ออกจากระบบ" onClick="vlogout()" />
+</hbox>
+</div>
+<div align="center">
+<groupbox id="gbFAR">
+<hbox>
+<label id="lbluser" value="${applicationScope['vuser']}" visible="false" />
+<label id="lblpwd" value="${applicationScope['vpwd']}" visible="false" />
+<label value="ค้นหาลูกค้า :" /><textbox id="txtfindar" onOK="searchar()"/><button label="ตกลง" image="/img/spotlight1.png" onClick="searchar()"/>
+</hbox>
+<listbox id="boxar" width="600px" mold="paging" onSelect="selectAR()" >
+			<listhead>
+		<listheader label="รหัสลูกค้า" align="left"/>
+		<listheader label="รหัสสมาชิก" align="left"/>
+		<listheader label="เลขที่บัตรประชาชน" align="left"/>
+		<listheader label="ชื่อนามสกุล" align="left"/>							
+	</listhead>
+</listbox>
+<groupbox id="vbxnotfound" visible="false">
+<vbox>
+<label value="===== ไม่พบข้อมูล =====" />
+<hbox>
+<button label="สมัครสมาชิกและเพิ่มข้อมูลใหม่" onClick="newregister()" />
+<button label="ค้นหาลูกค้าอีกครั้ง" onClick="research()" />
+</hbox>
+</vbox>
+</groupbox>
+</groupbox>
+<zscript>
+<![CDATA[
+import java.sql.*;
+import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
+import org.zkoss.zk.ui.Executions;
+import org.zkoss.zul.Label;
+import org.zkoss.zk.ui.event.CreateEvent;
+import org.zkoss.zk.ui.event.Event;
+import org.zkoss.zk.ui.event.ForwardEvent;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Formatter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Calendar;
+import condb.Database;
+
+String bcuser;
+String bcpass;
+// public variable-------------
+String vsarcode;
+String vbusinesscode;
+String vjobcode;
+String vpjplancode;
+String vpjplantcode;
+String vgetbudget;
+
+
+Connection con=null;
+Statement st=null;
+public void fnchklogin(){
+	
+	if(bcuser=="" && bcpass ==""){
+		Executions.sendRedirect("index.zul");
+	}
+}
+public void connectdb(){
+	try{
+		bcuser=lbluser.getValue();
+		bcpass=lblpwd.getValue();
+		con = Database.getConnection(bcuser,bcpass);
+		st = con.createStatement();
+	}catch(SQLException ex){
+		ex.printStackTrace();
+	}
+}
+
+public void searchar(){
+	String varcode;
+	Listitem liar;		     
+
+	try {
+		connectdb();
+		varcode = txtfindar.getValue();       
+		st.executeQuery("exec USP_MB_ARSearch '"+varcode+"'");
+		ResultSet rs = st.getResultSet (); 
+		   while (boxar.getItemCount() > 0) {			
+			   boxar.removeItemAt(0);				
+				}   
+		  
+			while (rs.next()){				
+				liar = new Listitem();
+				liar.appendChild(new Listcell(rs.getString("Arcode")));
+				liar.appendChild(new Listcell(rs.getString("Memberid")));
+				liar.appendChild(new Listcell(rs.getString("IDcardNo")));
+				liar.appendChild(new Listcell(rs.getString("ARName")));
+				boxar.appendChild(liar);
+				}
+			  if(boxar.getItemCount() == 0) {
+				 
+				vbxnotfound.setVisible(true);	
+				}else
+				{
+					vbxnotfound.setVisible(false);
+				}
+			rs.close();
+			st.close();
+			con.close();
+			
+	}
+	finally { //cleanup
+        if (st != null) {
+            try {
+                st.close();
+            } catch (SQLException ex) {
+                log.error(ex); //log and ignore
+            }
+        }
+     
+    }    
+}
+public void newregister(){
+	application.setAttribute("vaddstatus", "n");	
+	Executions.sendRedirect("mainpage.zul");
+}
+
+public void research(){
+	Executions.sendRedirect("searchar.zul");
+}
+public void selectAR(){
+	Listitem idata = new Listitem();
+	idata = boxar.getSelectedItem();
+	vsarcode = idata.getLabel();
+	application.setAttribute("sarcode", vsarcode);	
+	application.setAttribute("vaddstatus", "r");	
+	Executions.sendRedirect("mainpage.zul");
+}
+public void go2search(){	        	
+	 application.setAttribute("vstatus", "");
+	 Executions.sendRedirect("searchar.zul");
+}
+public void vlogout(){
+	 vsarcode="";	
+	 application.setAttribute("vstatus", "");
+	 application.setAttribute("vuser", "");
+	 application.setAttribute("vpwd", "");
+	 Executions.sendRedirect("index.zul");
+}
+]]>
+</zscript>
+</div>
+</window>
+</zk>

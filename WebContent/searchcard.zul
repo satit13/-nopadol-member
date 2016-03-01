@@ -1,0 +1,92 @@
+<?page title="Search Card." contentType="text/html;charset=UTF-8"?>
+<zk>
+<window id="mywin" closable="true" title="ค้นหาบัตรสมาชิก" width="520px">
+<hbox>
+<label id="lbluser" value="${applicationScope['vuser']}" visible="false" />
+<label id="lblpwd" value="${applicationScope['vpwd']}" visible="false" />
+<label value="ป้อนเลขบัตรสมาชิก : "/><textbox id="txtnewcardno" width="200px" onOK="searchcard()"></textbox><button label="ค้นหา" image="/img/spotlight1.png" onClick="searchcard()" />
+</hbox>
+<zscript>
+<![CDATA[
+import java.sql.*;
+import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
+import org.zkoss.zk.ui.Executions;
+import org.zkoss.zul.Label;
+import org.zkoss.zk.ui.event.CreateEvent;
+import org.zkoss.zk.ui.event.Event;
+import org.zkoss.zk.ui.event.ForwardEvent;
+import condb.Database;
+String bcuser;
+String bcpass; 
+
+Connection con=null;
+Statement st=null;
+public void connectdb(){
+	try{
+		bcuser=lbluser.getValue();
+		bcpass=lblpwd.getValue();
+		con = Database.getConnection(bcuser,bcpass);
+		st = con.createStatement();
+	}catch(SQLException ex){
+		ex.printStackTrace();
+	}
+}
+
+public void searchcard(){
+	String vcardsearch;
+	Listitem limb;	
+	
+	try {
+		connectdb();
+		vcardsearch = txtnewcardno.getValue();
+		st.executeQuery("exec USP_MB_MemberCardView '"+vcardsearch+"'");
+		ResultSet rs = st.getResultSet (); 
+		   while (boxcard.getItemCount() > 0) {
+				boxcard.removeItemAt(0);
+				}					
+			while (rs.next()){				
+				limb = new Listitem();
+				limb.appendChild(new Listcell(rs.getString("MemberID")));
+				limb.appendChild(new Listcell(rs.getString("Mydescription")));
+				limb.appendChild(new Listcell("เลือก"));				
+				boxcard.appendChild(limb);
+				}
+			rs.close();
+			st.close();
+			con.close();
+	}
+	finally { //cleanup
+        if (st != null) {
+            try {
+                st.close();
+            } catch (SQLException ex) {
+                log.error(ex); //log and ignore
+            }
+        }
+     
+    }    
+}  
+public void selectcard(){
+	String vnewcard;
+	Listitem idata = new Listitem();
+	idata = boxcard.getSelectedItem();
+	vnewcard = idata.getLabel();	
+	application.setAttribute("cardnumber", vnewcard);
+	application.setAttribute("vstatus", "c");
+	Executions.sendRedirect("mainpage.zul");
+	mywin.detach();
+}
+	]]>
+</zscript>
+<groupbox>
+<listbox id="boxcard" width="500px" mold="paging" onSelect="selectcard()" >
+		<listhead>
+		<listheader label="เลขที่บัตร" align="left"/>
+		<listheader label="Description" />
+		<listheader label="คลิกเลือกบัตร " />									
+	</listhead>
+</listbox>
+</groupbox>
+</window>
+</zk>

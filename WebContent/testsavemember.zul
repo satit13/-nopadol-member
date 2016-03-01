@@ -1,0 +1,100 @@
+<?page title="new page title" contentType="text/html;charset=UTF-8"?>
+<zk>
+<window title="new page title" border="normal">
+<zscript>
+<![CDATA[
+import java.sql.*;
+import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
+import org.zkoss.zk.ui.Executions;
+import org.zkoss.zul.Label;
+import org.zkoss.zk.ui.event.CreateEvent;
+import org.zkoss.zk.ui.event.Event;
+import org.zkoss.zk.ui.event.ForwardEvent;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Formatter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Calendar;
+//exec USP_MB_MemberSave '45455454545','0000001TEST','TEST01','' ,'22/04/2011','','คุณ','ทดสอบ','01/01/2011','BillAddress T A P 67890' ,'2','3','4','50000'
+//CallableStatement cs = con.prepareCall("{call myStoredProc()}");
+public void savemember(){	
+	try{		
+		Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+		String url="jdbc:sqlserver://192.168.0.7:1433;databaseName=bcnpdisa";   
+		Connection con = DriverManager.getConnection(url, "panuvich", "thaikom$$");	
+	CallableStatement cs = con.prepareCall("exec USP_MB_MemberSave '45455454545','0000001TEST','TEST01','' ,'22/04/2011','','คุณ','ทดสอบ','01/01/2011','BillAddress' ,'2','3','4','50000'");	
+		
+	int resultNum = 0;
+    while (true)
+    {
+        boolean queryResult;
+        int rowsAffected;
+        if (1 == ++resultNum)
+        {
+            try
+            {
+                queryResult = cs.execute();
+            }
+            catch (SQLException e)
+            {
+                // Process the error
+                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());
+                // When execute() throws an exception, it may just be that the first statement produced an error.
+                // Statements after the first one may have succeeded.  Continue processing results until there
+                // are no more.
+                continue;
+            }
+        }
+        else
+        {  try
+            {
+                queryResult = cs.getMoreResults();
+            }
+            catch (SQLException e){
+                // Process the error
+                System.out.println("Result " + resultNum + " is an error: " + e.getMessage());
+                // When getMoreResults() throws an exception, it may just be that the current statement produced an error.
+
+                // Statements after that one may have succeeded.  Continue processing results until there
+
+                // are no more.
+
+                continue;
+            }
+        }
+        if (queryResult)
+        {
+            ResultSet rs = cs.getResultSet();
+            // Process the ResultSet
+            System.out.println("Result " + resultNum + " is a ResultSet: " + rs);
+            rs.next();
+            String rsstr=rs.getString(1);
+            System.out.println("ค่าที่รับมา ="+rsstr);
+            String rsstr1=rs.getString(2);
+            System.out.println("ค่าที่รับมา Log ="+rsstr1);
+            rs.close();
+        }
+        else
+        {
+            rowsAffected = cs.getUpdateCount();
+            // No more results
+            if (-1 == rowsAffected)
+            {  //--resultNum;
+                break;
+            }
+            // Process the update count
+            System.out.println("Result " + resultNum + " is an update count: " + rowsAffected);
+            }
+    }
+    System.out.println("Done processing " + resultNum + " results");
+    
+	} catch (SQLException e)
+    {}
+}
+	]]>
+</zscript>
+<button label="click" onClick="savemember()" />
+</window>
+</zk>

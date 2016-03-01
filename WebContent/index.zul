@@ -1,0 +1,128 @@
+<?page title="ระบบสมัครสมาชิก นพดลพานิช"?>
+<zk>
+<borderlayout height="380px" style="background:#008BB6;" >
+	<north size="80px" border="0" style="background:#008BB6;">
+	<div>
+	<image style="padding:0 10px;" src="/img/nplogo.gif"/>
+	<label style="position:relative; top:-10px;padding-left: 30px; font-size:14px;color:#FFFFFF;font-weight:bold;" 
+	value="Nopadol members"/>
+	<label style="position:relative; top:-25px;padding-left: 5px; font-size:24px;color:#FFFFFF;font-weight:bold;" 
+	value="Smartpoint 2011"/>
+	</div>
+	</north>
+
+ <center>
+ <div align="center">
+ <!-- 
+  <image src="img/imgindex.jpg"/>
+   -->
+ <window border="none" width="30%">  
+   
+ <zscript><![CDATA[
+     
+    void redirect(){
+		  Executions.sendRedirect("vsub/register.zul");
+	   }
+
+]]></zscript>
+        <separator spacing="50px"/>
+        <label id="errLabel" style="color: red"/>
+        <groupbox mold="3d">
+        <caption image="/img/login.png" label="Login"/>
+        <grid width="100%">
+        <columns><column width="40%" align="right"/><column width="60%"/></columns>
+            <rows>
+            	
+                <row>
+                    <label value="BC Username:" />
+                    <textbox id="txtuser" width="150px" constraint="no empty"/>
+                </row>
+                <row>
+                    <label value="BC Password:" />
+                    <textbox id="txtpassword" width="150px" type="password" constraint="no empty" onOK="vlogin()"/>
+                </row>            
+                <row >
+                	<label value="" />
+                    <button label="Login" image="/img/accept.png" onClick="vlogin()"/>
+                </row>
+                <row>
+                
+                </row>
+            </rows>
+            </grid> 
+            </groupbox>           
+             <listbox id="box" visible="false" />
+ 
+        <zscript> 
+        <![CDATA[
+		import java.lang.*;
+       	import java.sql.*;
+       	import java.io.*;
+        import javax.annotation.Resource;
+		import javax.servlet.http.Cookie;
+		import org.zkoss.zk.ui.Executions;
+		import org.zkoss.zul.Textbox;
+		import org.zkoss.zul.Label;
+		import java.text.SimpleDateFormat;
+		import java.util.Date;
+		import java.util.Calendar;
+		import condb.Database;
+		
+	public void vlogin(){
+	
+	String vbcuser;
+	String vbcpwd;
+	String vBCUser;
+	String vBCPassword;
+	
+	
+	Connection con=null;
+	Statement st = null;
+	String strQry;
+	Integer a;
+	try{
+		vBCUser = txtuser.getValue();
+		vBCPassword = txtpassword.getValue();
+		con = Database.getConnection(vBCUser, vBCPassword);
+		//con = Database.getConnection();
+	//	String url="jdbc:sqlserver:"+npserver+"databaseName="+npdb+"";   
+	//	Connection conn = DriverManager.getConnection(url, vbcuser, vbcpwd);
+		/*
+		st = con.createStatement();
+		strQry ="select top 1 * from bcar";
+		st.executeQuery(strQry);
+		ResultSet rs = st.getResultSet();
+		while(rs.next()){
+			a=rs.getInt("roworder");
+		}
+		*/
+		if(con !=null){
+			System.out.println("connected");
+			application.setAttribute("vuser", vBCUser);
+			application.setAttribute("vpwd", vBCPassword);
+			Executions.sendRedirect("searchar.zul");
+		}	else{
+			System.out.println();
+		}
+		
+	}catch(Exception e){		
+		
+		System.out.println("Error Trace in getConnection() : " + e.getMessage());	
+		
+	}
+}
+		    
+            ]]>
+        </zscript>
+    </window>
+    </div>
+    </center>
+	<south size="40px" border="0" style="background:#c5e6ef;">
+		<toolbar mold="panel" align="center">	
+			® ระบบรับสมัครสมาชิก v.2013.0 
+			<label value="® ระบบรับสมัครสมาชิก v.2011.1" visible="false"/>
+			<toolbarbutton label=""/>
+		</toolbar>
+	</south>
+</borderlayout>
+</zk>
